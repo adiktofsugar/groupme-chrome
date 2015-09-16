@@ -348,7 +348,7 @@ function GroupMe() {
     this.setCache = setCache;
 
     var notifier = new GroupMeNotifier(this, {
-        showMessagesFromUser: true
+        showMessagesFromUser: false
     });
     notifier.start();
 
