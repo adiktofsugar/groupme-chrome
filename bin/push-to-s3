@@ -16,5 +16,12 @@ s3_folder="$project_root/s3"
 cd $s3_folder
 set -x
 s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
-    sync --acl-public --guess-mime-type . s3://groupme-chrome/
+    put --acl-public --guess-mime-type ./oauth_callback.html s3://groupme-chrome/
+s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
+    put --acl-public \
+    --add-header 'Content-type:application/x-chrome-extension' \
+    ./groupme-chrome.crx s3://groupme-chrome/
+s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
+    put --acl-grant='all:anincrediblyshortname@gmail.com' \
+    ./groupme-chrome.pem s3://groupme-chrome/
 set +x
