@@ -79,9 +79,20 @@ function GroupMeNotifier(groupMe, options) {
     var showMessagesFromUser = options.showMessagesFromUser || false;
 
     function start() {
+        var notifier = this;
         groupMe.api('/users/me', function (error, me) {
             if (error) {
-                throw error;
+                groupMe.getCache(function (cache) {
+                    if (!cache.token) {
+                        console.error("No token. Will try to start once token is set.");
+                        return;
+                    }
+                    console.error("Couldn't get user, trying again in 5 seconds.");
+                    setTimeout(function () {
+                        notifier.start();
+                    }, 5000);
+                });
+                return;
             }
             var userId = me.id;
             if (!userId) {
