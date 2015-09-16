@@ -18,6 +18,8 @@ set -x
 s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
     put --acl-public --guess-mime-type ./oauth_callback.html s3://groupme-chrome/
 s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
+    put --acl-public --guess-mime-type ./update.xml s3://groupme-chrome/
+s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
     put --acl-public \
     --add-header 'Content-type:application/x-chrome-extension' \
     ./groupme-chrome.crx s3://groupme-chrome/
