@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+
+  "name": "GroupMe",
+  "description": "Allows sharing to GroupMe from desktop",
+  "version": "1.0",
+
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "browser_action": {
+    "default_icon": "icon19.png",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "notifications",
+    "tabs",
+    "storage",
+    "https://groupme-chrome.s3-website-us-west-1.amazonaws.com/oauth_callback.html",
+    "https://*.groupme.com/",
+    "http://*.groupme.com/"
+  ],
+  "content_security_policy": "script-src 'self' https://push.groupme.com; object-src 'self'",
+  "background": {
+    "page": "background.html"
+  }
+}

@@ -1,0 +1,1 @@
+window.groupMe = new GroupMe();

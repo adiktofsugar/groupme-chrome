@@ -1,0 +1,20 @@
+#!/bin/bash
+project_root="$(cd `dirname ${BASH_SOURCE[0]}`; cd ..; pwd)"
+usage="
+push-to-s3 [-h]
+Pushes contents of s3 folder to the groupme-chrome bucket
+"
+while getopts ":h" opt; do
+    case "$opt" in
+        h) echo "$usage"; exit;;
+    esac
+done
+
+source "$project_root/bin/lib/s3-checks-and-credentials.sh"
+
+s3_folder="$project_root/s3"
+cd $s3_folder
+set -x
+s3cmd --access_key="$s3_access_key" --secret_key="$s3_secret_key"\
+    sync --acl-public --guess-mime-type . s3://groupme-chrome/
+set +x

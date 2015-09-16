@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>GroupMe</title>
+        <script src="lib/jquery.js"></script>
+        <script src="popup.js"></script>
+        <link rel="stylesheet" href="popup.css" />
+    </head>
+    <body tabindex="1">
+        <div id="info" class="hidden">
+            <p class="info-message"></p>
+        </div>
+        <div id="error" class="hidden">
+            <p class="error-message"></p>
+        </div>
+        
+        <div id="login" class="hidden">
+            <a class="login-login" href="">Click here to log in</a>
+        </div>
+        <div id="logged-in" class="hidden">
+            You are logged in. Click <a class="logged-in-logout" href="#">here</a> to logout.
+        </div>
+
+        <div id="select-group" class="hidden">
+            <span>Select group:</span>
+            <ul></ul>
+        </div>
+        <div id="selected-group" class="hidden">
+            You are on group <span class="selected-group-name">--group name--</span>.
+            Click <a href="#" class="selected-group-remove">here</a> to change.
+        </div>
+
+        <div id="post-message" class="hidden">
+            <form>
+                <div>
+                    <input placeholder="Enter your message" name="message" />
+                </div>
+                <button type="submit">Send</button>
+                <button id="post-message-current-page-button" type="submit">Share Current Page</button>
+            </form>
+        </div>
+    </body>
+</html>

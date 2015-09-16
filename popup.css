@@ -1,0 +1,48 @@
+body {
+    min-width: 300px;
+}
+.hidden {
+    display: none;
+}
+
+#error, #info, #login, #logged-in, #select-group, #selected-group, #post-message {
+    margin-top: 0.5em;
+}
+
+#info .info-message {
+    padding: 0.3em;
+    margin: 0;
+}
+
+#error .error-message {
+    padding: 0.3em;
+    margin: 0;
+    color: red;
+}
+
+
+#select-group ul {
+    margin: 0 0 0 1em;
+    padding: 0;
+}
+
+#post-message input {
+    box-sizing: border-box;
+    width: 100%;
+    font-size: 150%;
+    line-height: 1.1em;
+}
+#post-message button {
+    border: none;
+    padding: 0.6em 1em;
+    font-size: 100%;
+    border-radius: 0px;
+    background: #069;
+    color: white;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+#post-message button:hover,
+#post-message button:active {
+    cursor: pointer;
+    background: #29b;
+}
