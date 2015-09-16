@@ -3,7 +3,7 @@
 
   "name": "GroupMe",
   "description": "Allows sharing to GroupMe from desktop",
-  "version": "1.2",
+  "version": "1.4",
 
   "icons": {
     "16": "icon16.png",
@@ -18,7 +18,7 @@
     "notifications",
     "tabs",
     "storage",
-    "https://groupme-chrome.s3-website-us-west-1.amazonaws.com/oauth_callback.html",
+    "https://s3-us-west-1.amazonaws.com/groupme-chrome/oauth_callback.html",
     "https://*.groupme.com/",
     "http://*.groupme.com/"
   ],
@@ -26,5 +26,5 @@
   "background": {
     "page": "background.html"
   },
-  "update_url": "https://groupme-chrome.s3-website-us-west-1.amazonaws.com/update.xml"
+  "update_url": "https://s3-us-west-1.amazonaws.com/groupme-chrome/update.xml"
 }

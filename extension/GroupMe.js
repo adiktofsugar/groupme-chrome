@@ -190,7 +190,7 @@ function GroupMeNotifier(groupMe, options) {
 
 function GroupMe() {
     var authorizeUri = 'https://oauth.groupme.com/oauth/authorize?client_id=KRSKsn6m30Q8Bey31dBRxKsOBmtMMVQXowHdU1KsO8SinOPV';
-    var oauthCallbackUri = 'https://groupme-chrome.s3-website-us-west-1.amazonaws.com/oauth_callback.html';
+    var oauthCallbackUri = 'https://s3-us-west-1.amazonaws.com/groupme-chrome/oauth_callback.html';
 
     var baseApiUri = 'https://api.groupme.com/v3';
     function ApiError(meta) {
@@ -247,17 +247,17 @@ function GroupMe() {
         });
     }
 
-    var popupReference = null;
+    var popupTabId = null;
 
     function login(callback) {
         callback = callback || function () {};
         function onRemoved (tabId) {
-            if (popupReference && popupReference.tabId === tabId) {
-                popupReference = null;
+            if (popupTabId === tabId) {
+                popupTabId = null;
             }
         }
         function onUpdated (tabId, changeInfo, tab) {
-            if (popupReference && popupReference.id == tabId) {
+            if (popupTabId == tabId) {
                 console.log("popup was updated - " + 
                     "status: " + changeInfo.status +
                     "url: " + changeInfo.url);
@@ -271,7 +271,7 @@ function GroupMe() {
             chrome.tabs.onRemoved.removeListener(onRemoved);
             chrome.tabs.onUpdated.removeListener(onUpdated);
 
-            chrome.tabs.get(popupReference.id, function (tab) {
+            chrome.tabs.get(popupTabId, function (tab) {
                 var uri = new Uri(tab.url);
                 chrome.tabs.remove(tab.id, function () {
                     var token = uri.getQueryParamValue("access_token");
@@ -293,18 +293,26 @@ function GroupMe() {
         }, function () {
             chrome.tabs.onRemoved.addListener(onRemoved);
             chrome.tabs.onUpdated.addListener(onUpdated);
-            
-            if (popupReference === null) {
-                chrome.tabs.create({
-                    url: authorizeUri
-                }, function (tab) {
-                    popupReference = tab;
-                })
-            } else {
-                chrome.tabs.update(popupReference.id, {
-                    active: true
-                });
+
+            function openPopup() {
+                if (popupTabId === null) {
+                    chrome.tabs.create({
+                        url: authorizeUri
+                    }, function (tab) {
+                        popupTabId = tab.id;
+                    })
+                } else {
+                    chrome.tabs.update(popupTabId, {
+                        active: true
+                    }, function (updatedTab) {
+                        if (!updatedTab) {
+                            popupTabId = null;
+                            openPopup();
+                        }
+                    });
+                }
             }
+            openPopup();
         });
     }
 
