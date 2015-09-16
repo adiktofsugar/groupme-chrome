@@ -173,7 +173,7 @@ function GroupMeNotifier(groupMe, options) {
                     });
                     chrome.tabs.update(matchedTab.id, {
                         "active": true,
-                        "url": newURL
+                        "url": (matchedTab.url == newURL) ? undefined : newURL
                     });
                 } else {
                     chrome.tabs.create({
@@ -302,13 +302,17 @@ function GroupMe() {
                         popupTabId = tab.id;
                     })
                 } else {
-                    chrome.tabs.update(popupTabId, {
-                        active: true
-                    }, function (updatedTab) {
-                        if (!updatedTab) {
+                    chrome.tabs.get(popupTabId, function (tab) {
+                        if (!tab) {
                             popupTabId = null;
-                            openPopup();
+                            return openPopup();
                         }
+                        chrome.windows.update(tab.windowId, {
+                            "focused": true
+                        });
+                        chrome.tabs.update(popupTabId, {
+                            active: true
+                        });
                     });
                 }
             }

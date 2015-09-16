@@ -73,7 +73,7 @@ $(window).on('load', function () {
     }
     function selectGroupItemClick(event) {
         event.preventDefault();
-        var $item = $(event.target);
+        var $item = $(event.currentTarget);
         var group = $item.data('group');
         if (!group) {
             $('#error').text("No group associated with item");
@@ -94,6 +94,8 @@ $(window).on('load', function () {
         groupMe.getCache(function (cache) {
             var groupName = cache.groupName;
             var groupId = cache.groupId;
+            var groupUri = "https://app.groupme.com/chats/" + groupId;
+            $('#selected-group .selected-group-uri').attr("href", groupUri);
             $('#selected-group .selected-group-name').text(groupName);
         });
     }
@@ -106,7 +108,31 @@ $(window).on('load', function () {
             render();
         });
     }
+    function selectedGroupUriClickHandler(event) {
+        event.preventDefault();
+        var $link = $(event.currentTarget);
+        var uri = $link.attr("href");
+        chrome.tabs.query({
+            "url": "https://app.groupme.com/*"
+        }, function (tabs) {
+            if (tabs.length > 0) {
+                var matchedTab = tabs[0];
+                chrome.windows.update(matchedTab.windowId, {
+                    "focused": true
+                });
+                chrome.tabs.update(matchedTab.id, {
+                    "active": true,
+                    "url": (matchedTab.url == uri) ? undefined : uri
+                });
+            } else {
+                chrome.tabs.create({
+                    url: uri
+                });
+            }
+        });
+    }
     $('#selected-group').on('click', '.selected-group-remove', selectedGroupRemoveButtonClickHandler);
+    $('#selected-group').on('click', '.selected-group-uri', selectedGroupUriClickHandler);
 
 
     function postMessageRender() {
