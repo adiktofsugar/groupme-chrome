@@ -1,6 +1,6 @@
-<?xml version='1.5'?>
+<?xml version='1.6'?>
 <gupdate xmlns='http://www.google.com/update2/response' protocol='2.0'>
   <app appid='ilkgkhjgmdkacbkggpfknkjlcmoglbja'>
-    <updatecheck codebase='https://s3-us-west-1.amazonaws.com/groupme-chrome/groupme-chrome.crx' version='1.5' />
+    <updatecheck codebase='https://s3-us-west-1.amazonaws.com/groupme-chrome/groupme-chrome.crx' version='1.6' />
   </app>
 </gupdate>
