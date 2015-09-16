@@ -1,0 +1,71 @@
+#!/bin/bash
+project_root="$(cd `dirname ${BASH_SOURCE[0]}`; cd ..; pwd)"
+
+usage="
+bump-version [-h][-r]
+  -h - help
+  -r - reverse (1.3 -> 1.2)
+  -m - bump major version (instead of minor)
+Bumps the version in update.xml and manifest.json
+"
+bump_major=false
+bump_minor=true
+reverse=false
+while getopts ":hrm" opt; do
+    case $opt in
+        h) echo "$usage"; exit;;
+        r) reverse=true;;
+        m) bump_major=true; bump_minor=false;;
+    esac
+done
+
+manifest_json_path=$project_root/extension/manifest.json
+update_xml_path=$project_root/s3/update.xml
+
+version=
+while read line; do
+    if [[ "$line" =~ \"version\":\ \"([0-9\.]+)\" ]]; then
+        version="${BASH_REMATCH[1]}"
+    fi
+done < "$manifest_json_path"
+
+if [[ -z "$version" ]]; then
+    echo "Could not find version."
+    exit 1
+fi
+[[ "$version" =~ ([0-9]+)\.([0-9]+) ]]
+major_version="${BASH_REMATCH[1]}"
+minor_version="${BASH_REMATCH[2]}"
+
+bump_version="$minor_version"
+if [[ "$bump_major" = "true" ]]; then
+    bump_version="$major_version"
+fi
+
+if [[ "$reverse" = "true" ]]; then
+    bump_version="$(( $bump_version - 1 ))"
+    if [[ "$bump_version" -lt 0 ]] && [[ "$bump_minor" = "true" ]]; then
+        echo "Can't decrease minor version from 0. Exiting."
+        exit 1
+    fi
+else
+    bump_version=$(( $bump_version + 1 ))
+fi
+
+next_major_version="$major_version"
+next_minor_version="$minor_version"
+if [[ "$bump_major" = "true" ]]; then
+    next_major_version="$bump_version"
+else
+    next_minor_version="$bump_version"
+fi
+
+
+next_version="$next_major_version.$next_minor_version"
+echo "current: $version next: $next_version"
+
+sed -i '.bak' -E "s/\"version\": \".+\"/\"version\": \"$next_version\"/" "$manifest_json_path"
+rm "$manifest_json_path.bak"
+
+sed -i '.bak' -E "s/version='.+'/version='$next_version'/g" "$update_xml_path"
+rm "$update_xml_path.bak"
