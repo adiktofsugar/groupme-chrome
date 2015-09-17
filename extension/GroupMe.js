@@ -4,6 +4,30 @@ var nameToTokenMap = {
     'groupName': 'groupme-chrome-groupName',
 };
 
+function EventEmitter() {
+    var registeredEventCallbacks = {};
+
+    function on(eventName, callback) {
+        if (!registeredEventCallbacks[eventName]) {
+            registeredEventCallbacks[eventName] = [];
+        }
+        registeredEventCallbacks[eventName].push(callback);
+    }
+    function off(eventName) {
+        registeredEventCallbacks[eventName] = null;
+    }
+    function trigger(eventName) {
+        var args = Array.prototype.slice.call(arguments);
+        var eventCallbacks = registeredEventCallbacks[eventName] || [];
+        eventCallbacks.forEach(function (callback) {
+            callback.apply(null, args.slice(1));
+        });
+    }
+    this.on = on;
+    this.off = off;
+    this.trigger = trigger;
+}
+
 function GroupMeGroupCache(groupMe) {
     var groupById = {};
     function get(id, callback) {
@@ -74,6 +98,7 @@ function GroupMeNotifier(groupMe, options) {
     var subscription = null;
     var groupCache = new GroupMeGroupCache(groupMe);
     var notifications = [];
+    var events = new EventEmitter();
 
     options = options || {};
     var showMessagesFromUser = options.showMessagesFromUser || false;
@@ -114,9 +139,13 @@ function GroupMeNotifier(groupMe, options) {
                     }
                 });
                 subscription = client.subscribe('/user/' + userId, function (message) {
-                    if (message.type == "line.create" && 
-                        (showMessagesFromUser || message.subject.sender_id !== userId)) {
-                        show(message);
+                    console.log("Got message");
+                    console.dir(message);
+                    if (message.type == "line.create") {
+                        events.trigger("show", message);
+                        if (showMessagesFromUser || message.subject.sender_id !== userId) {
+                            show(message);
+                        }
                     }
                 });
             });
@@ -131,9 +160,6 @@ function GroupMeNotifier(groupMe, options) {
 
     var MAX_NOTIFICATIONS = 5;
     function show(message, callback) {
-        console.log("Got message");
-        console.dir(message);
-
         var subject = message.subject;
         groupCache.get(subject.group_id, function (error, group) {
             var notification = new GroupMeNotification(message, group);
@@ -186,11 +212,13 @@ function GroupMeNotifier(groupMe, options) {
 
     this.start = start;
     this.stop = stop;
+    this.events = events;
 }
 
 function GroupMe() {
     var authorizeUri = 'https://oauth.groupme.com/oauth/authorize?client_id=KRSKsn6m30Q8Bey31dBRxKsOBmtMMVQXowHdU1KsO8SinOPV';
     var oauthCallbackUri = 'https://s3-us-west-1.amazonaws.com/groupme-chrome/oauth_callback.html';
+    var events = new EventEmitter();
 
     var baseApiUri = 'https://api.groupme.com/v3';
     function ApiError(meta) {
@@ -358,9 +386,13 @@ function GroupMe() {
     this.api = api;
     this.getCache = getCache;
     this.setCache = setCache;
+    this.events = events;
 
     var notifier = new GroupMeNotifier(this, {
         showMessagesFromUser: false
+    });
+    notifier.events.on("show", function (message) {
+        events.trigger("notifier:show", message);
     });
     notifier.start();
 

@@ -49,44 +49,56 @@ $(window).on('load', function () {
     $('#logged-in').on('click', '.logged-in-logout', loggedInLogoutButtonClickHandler);
 
 
+    var selectGroupRenderTimeout = null;
     function selectGroupRender() {
+        if (selectGroupRenderTimeout) {
+            clearTimeout(selectGroupRenderTimeout);
+        }
         $('#select-group').removeClass('hidden');
         groupMe.api('/groups', function (error, groups) {
-            var $selectGroupUl = $('#select-group ul');
-            $selectGroupUl.empty();
+            var $selectGroupSelect = $('#select-group select');
+            $selectGroupSelect.find('option')
+                .filter(function (index, option) {
+                    return option.value !== "";
+                })
+                .remove();
             
             if (error) {
-                $selectGroupUl.append('<li>Error loading groups: ' + error.message + '</li>');
+                errorRender("Error loading groups: " + error.message +
+                    "Trying again in 1 second.");
+                setTimeout(function () {
+                    selectGroupRender();
+                }, 1000);
                 return;
             }
             groups.forEach(function (group) {
-                $selectGroupUl.append(
-                    $('<li>')
-                    .append(
-                        $('<a href="#">')
-                        .text(group.name)
-                        .data("group", group)
-                    )
+                $selectGroupSelect.append(
+                    $('<option>')
+                    .val(group.id)
+                    .text(group.name)
                 );
             });
         });
     }
-    function selectGroupItemClick(event) {
+    function selectGroupSelectChange(event) {
         event.preventDefault();
-        var $item = $(event.currentTarget);
-        var group = $item.data('group');
-        if (!group) {
-            $('#error').text("No group associated with item");
+        event.stopPropagation();
+        var $selectGroupSelect = $('#select-group select');
+        var $selectedOption = $selectGroupSelect.find('option:selected');
+        var groupId = $selectedOption.val();
+        var groupName = $selectedOption.text();
+        if (!groupId) {
+            errorRender("No group associated with item");
             return;
         }
         groupMe.setCache({
-            groupId: group.id,
-            groupName: group.name
+            groupId: groupId,
+            groupName: groupName
         }, function () {
             render();
         });
     }
-    $('#select-group ul').on('click', 'li>a', selectGroupItemClick);
+    $('#select-group select').on('change', selectGroupSelectChange);
 
 
     function selectedGroupRender() {
@@ -133,11 +145,60 @@ $(window).on('load', function () {
     }
     $('#selected-group').on('click', '.selected-group-remove', selectedGroupRemoveButtonClickHandler);
     $('#selected-group').on('click', '.selected-group-uri', selectedGroupUriClickHandler);
+    function selectedGroupShareCurrentPageButtonClickHandler(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
+            var tab = tabs[0];
+            postMessage(tab.url);
+        });
+    }
+    $('#selected-group .selected-group-share-current-page-button')
+        .on('click', selectedGroupShareCurrentPageButtonClickHandler);
 
 
     function postMessageRender() {
         $('#post-message').removeClass('hidden');
         $('#post-message textarea').focus();
+        postMessageRenderMessages();
+    }
+    var postMessageRenderMessagesTimeout = null;
+    function postMessageRenderMessages() {
+        clearTimeout(postMessageRenderMessagesTimeout);
+        groupMe.getCache(function (cache) {
+            var groupId = cache.groupId;
+            if (!groupId) {
+                return;
+            }
+            groupMe.api('/groups/' + groupId + '/messages', function (error, messageResponse) {
+                if (error) {
+                    postMessageRenderMessagesTimeout = setTimeout(function () {
+                        renderMessages();
+                    }, 1000);
+                    errorRender(error);
+                    infoRender("Couldn't load messages, trying again in 1 second...");
+                    return;
+                }
+                var messages = messageResponse.messages;
+                messages.sort(function (a, b) {
+                    if (a.created_at > b.created_at) {
+                        return -1;
+                    } else if (a.created_at < b.created_at) {
+                        return 1;
+                    }
+                    return 0;
+                });
+                var $messagesUl = $('#post-message .post-message-message-list');
+                $messagesUl.find('li').remove();
+                messages = messages.slice(0, 5);
+                messages.forEach(function (message) {
+                    $messagesUl.append(
+                        $('<li>')
+                        .text(message.name + " - " + message.text)
+                    );
+                });
+            });
+        });
     }
     function postMessage(message) {
         var $form = $('#post-message form');
@@ -165,6 +226,25 @@ $(window).on('load', function () {
             });
         });
     }
+    var isShiftKeyPressed = false;
+    var ENTER = 13;
+    var SHIFT = 16;
+    function postMessageTextareaKeydownHandler(event) {
+        if (event.which == SHIFT) {
+            isShiftKeyPressed = true;
+        }
+        if (event.which == ENTER && !isShiftKeyPressed) {
+            event.preventDefault();
+            $('#post-message form').submit();
+        }
+    }
+    function postMessageTextareaKeyupHandler(event) {
+        if (event.which == SHIFT) {
+            isShiftKeyPressed = false;
+        }
+    }
+    $('#post-message form textarea').on('keydown', postMessageTextareaKeydownHandler);
+    $('#post-message form textarea').on('keyup', postMessageTextareaKeyupHandler);
     function postMessageFormHandler(event) {
         event.preventDefault();
         var $form = $('#post-message form');
@@ -172,16 +252,6 @@ $(window).on('load', function () {
         postMessage(message);
     }
     $('#post-message form').on('submit', postMessageFormHandler);
-    function postMessageCurrentPageClickHandler(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
-            var tab = tabs[0];
-            postMessage(tab.url);
-        });
-    }
-    $('#post-message #post-message-current-page-button')
-        .on('click', postMessageCurrentPageClickHandler);
 
     function render() {
         $('#login, #logged-in, #select-group, #selected-group, #post-message').addClass('hidden');
@@ -199,6 +269,6 @@ $(window).on('load', function () {
             postMessageRender();
         });
     }
+    groupMe.events.on("notifier:show", postMessageRenderMessages);
     render();
-    document.activeElement.blur();
 });

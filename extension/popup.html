@@ -17,27 +17,30 @@
         <div id="login" class="hidden">
             <a class="login-login" href="">Click here to log in</a>
         </div>
+
         <div id="logged-in" class="hidden">
-            You are logged in. Click <a class="logged-in-logout" href="#">here</a> to logout.
+            <a class="logged-in-logout" href="#">logout</a>
         </div>
 
         <div id="select-group" class="hidden">
-            <span>Select group:</span>
-            <ul></ul>
+            <form>
+                <select name="group_id">
+                    <option value="">Select a Group</option>
+                </select>
+            </form>
         </div>
         <div id="selected-group" class="hidden">
-            You are on group <a class="selected-group-uri" href=""><span class="selected-group-name">--group name--</span></a>.
-            Click <a href="#" class="selected-group-remove">here</a> to change.
+            <a class="selected-group-share-current-page-button" href="">Share Current Page</a>
+            <a class="selected-group-uri" href=""><span class="selected-group-name">--group name--</span></a>
+            <a href="#" class="selected-group-remove"><small>change</small></a>
         </div>
 
         <div id="post-message" class="hidden">
             <form>
-                <div>
-                    <input placeholder="Enter your message" name="message" />
-                </div>
-                <button type="submit">Send</button>
-                <button id="post-message-current-page-button" type="submit">Share Current Page</button>
+                <textarea placeholder="Enter your message and press ENTER" name="message"></textarea>
             </form>
+            <ul class="post-message-message-list">
+            </ul>
         </div>
     </body>
 </html>

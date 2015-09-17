@@ -4,6 +4,18 @@ body {
 .hidden {
     display: none;
 }
+a:link,
+a:visited {
+    color: #666;
+}
+a:focus,
+a:active {
+    outline: none;
+}
+a:hover,
+a:active {
+    text-decoration: none;
+}
 
 #error, #info, #login, #logged-in, #select-group, #selected-group, #post-message {
     margin-top: 0.5em;
@@ -20,29 +32,85 @@ body {
     color: red;
 }
 
-
-#select-group ul {
-    margin: 0 0 0 1em;
-    padding: 0;
+#logged-in, #select-group, #selected-group {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    height: 30px;
+    line-height: 25px;
+}
+#login .login-login{
+    display: block;
+}
+#logged-in {
+    float: right;
+    text-align: right;
+    width: 50px;
+}
+#select-group, #selected-group {
+    float: left;
+    width: 100%;
+    margin-left: -50px;
+    padding-left: 50px;
+    box-sizing: border-box;
+}
+#logged-in .logged-in-logout {
+    display: inline-block;
+    box-sizing: border-box;
+    text-decoration: none;
+    color: #333;
+}
+#logged-in .logged-in-logout:hover,
+#logged-in .logged-in-logout:active {
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: gray;
 }
 
-#post-message input {
+#select-group select {
+    width: 100%;
+    background: #eee;
+    height: 25px;
+    border: 1px solid #dadada;
+    box-shadow: inset 1px 1px 2px white;
+}
+
+#selected-group .selected-group-share-current-page-button {
+    float: right;
+    display: inline-block;
+    color: white;
+    text-decoration: none;
+    background: #00aff0;
+    line-height: 1.5em;
+    padding: 0.3em 0.5em;
+    border-radius: 2px;
+}
+#selected-group .selected-group-share-current-page-button:hover,
+#selected-group .selected-group-share-current-page-button:active {
+    background: #00dff0;
+}
+#selected-group .selected-group-uri {
+    text-decoration: none;
+    color: #333;
+}
+#selected-group .selected-group-uri:hover,
+#selected-group .selected-group-uri:active {
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: gray;
+}
+#selected-group .selected-group-remove {
+}
+
+#post-message {
+    clear: both;
+}
+#post-message textarea {
     box-sizing: border-box;
     width: 100%;
-    font-size: 150%;
+    font-size: 120%;
     line-height: 1.1em;
+    min-height: 3em;
+    border: 1px solid #eee;
 }
-#post-message button {
-    border: none;
-    padding: 0.6em 1em;
-    font-size: 100%;
-    border-radius: 0px;
-    background: #069;
-    color: white;
-    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-}
-#post-message button:hover,
-#post-message button:active {
-    cursor: pointer;
-    background: #29b;
+#post-message textarea:focus {
+    outline: none;
+    border-color: #aaa;
 }
