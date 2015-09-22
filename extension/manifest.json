@@ -3,7 +3,7 @@
 
   "name": "GroupMe",
   "description": "Allows sharing to GroupMe from desktop",
-  "version": "1.7",
+  "version": "1.8",
 
   "icons": {
     "16": "icon16.png",
@@ -22,6 +22,10 @@
     "https://*.groupme.com/",
     "http://*.groupme.com/"
   ],
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
+  },
   "content_security_policy": "script-src 'self' https://push.groupme.com; object-src 'self'",
   "background": {
     "page": "background.html"

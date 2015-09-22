@@ -1,6 +1,7 @@
 $(window).on('load', function () {
     var backgroundPage = chrome.extension.getBackgroundPage();
     var groupMe = backgroundPage.groupMe;
+    var GroupMeMessage = backgroundPage.GroupMeMessage;
 
     function infoRender(message) {
         $('#info').removeClass('hidden')
@@ -192,9 +193,10 @@ $(window).on('load', function () {
                 $messagesUl.find('li').remove();
                 messages = messages.slice(0, 5);
                 messages.forEach(function (message) {
+                    var groupMeMessage = new GroupMeMessage(message);
                     $messagesUl.append(
                         $('<li>')
-                        .text(message.name + " - " + message.text)
+                        .text(groupMeMessage.name + " - " + groupMeMessage.toString())
                     );
                 });
             });

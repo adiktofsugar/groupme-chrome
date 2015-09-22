@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GroupMe Options</title>
+  <style>
+    body {
+      padding: 10px;
+    }
+    #options button {
+      margin-top: 0.5em;
+    }
+    #options ul {
+      margin: 0;
+      padding: 0;
+      list-style-type: none;
+    }
+
+  </style>
+  <script src="lib/jquery.js"></script>
+  <script src="options.js"></script>
+</head>
+
+<body>
+  <div id="status"></div>
+  <form id="options">
+    <ul>
+      <li>
+        <label>
+          <input type="checkbox" name="self_notifications" />
+          Show Notifications from yourself?
+        </label>
+      </li>
+      <li>
+        <label>How many seconds to show notifications?</label>
+        <input type="number" name="notification_timeout" />
+      </li>
+    </ul>
+    <button type="submit">Save</button>
+  </form>
+</body>
+</html>

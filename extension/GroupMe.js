@@ -2,6 +2,9 @@ var nameToTokenMap = {
     'token': 'groupme-chrome-token',
     'groupId': 'groupme-chrome-groupId',
     'groupName': 'groupme-chrome-groupName',
+
+    'selfNotifications': 'selfNotifications',
+    'notificationTimeout': 'notificationTimeout'
 };
 
 function EventEmitter() {
@@ -50,27 +53,90 @@ function GroupMeGroupCache(groupMe) {
     this.get = get;
 }
 
-function GroupMeNotification(message, group) {
-    var subject = message.subject;
-    var id = subject.id;
-    var attachments = subject.attachments;
+function GroupMeAttachment(attachmentObject) {
+    var type = attachmentObject.type;
+    var imageParameters = {
+        url: attachmentObject.url
+    };
+    var locationParameters = {
+        lat: attachmentObject.lat,
+        lng: attachmentObject.lng
+    };
+    var splitParameters = {
+        token: attachmentObject.token
+    };
+    var emojiParameters = {
+        placeholder: attachmentObject.placeholder,
+        charmap: attachmentObject.charmap
+    };
+
+    var parameters;
+    switch (type) {
+        case "image":
+            parameters = imageParameters;
+        case "split":
+            parameters = splitParameters;
+        case "emoji":
+            parameters = emojiParameters;
+    }
+
+    this.type = type;
+    this.parameters = parameters;
+}
+
+function GroupMeMessage(messageObject) {
+    var id = messageObject.id;
+    var createdAt = new Date(messageObject.created_at);
+    var userId = messageObject.user_id;
+    var groupId = messageObject.group_id;
+    var name = messageObject.name;
+    var avatarUrl = messageObject.avatar_url;
+    var text = messageObject.text;
+    var attachments = messageObject.attachments.map(function (attachmentObject) {
+        return new GroupMeAttachment(attachmentObject);
+    });
+
+    
+    function toString() {
+        return (text || "(no text)") +
+            ((attachments.length) ? " - " +  attachments.length + " attachments" : "");
+    }
+
+    this.id = id;
+    this.createdAt = createdAt;
+    this.userId = userId;
+    this.groupId = groupId;
+    this.name = name;
+    this.avatarUrl = avatarUrl;
+    this.text = text;
+    this.attachments = attachments;
+    this.toString = toString;
+}
+
+
+function GroupMeNotification(messageObject, group) {
+    var message = new GroupMeMessage(messageObject.subject);
+    var id = message.id;
+    var attachments = message.attachments;
     var notificationId = null;
     var unrenderTimeout = null;
 
     function render() {
         var options = {
             type: 'basic',
-            title: group.name || "GroupMe" + " - " + subject.name,
-            message: (subject.text || "(no text)") +
-                ((attachments.length) ? " - " +  attachments.length + " attachments" : ""),
-            iconUrl: subject.avatar_url || group.image || 'icon.png'
+            title: group.name || "GroupMe" + " - " + message.name,
+            message: message.toString(),
+            iconUrl: message.avatarUrl || group.image || 'icon.png'
         };
-        chrome.notifications.create(id, options, function (createdNotificationId) {
-            notificationId = createdNotificationId;
+        groupMe.getCache(function (cache) {
+            var notificationTimeout = cache.notificationTimeout || 10000;
+            chrome.notifications.create(id, options, function (createdNotificationId) {
+                notificationId = createdNotificationId;
+                unrenderTimeout = setTimeout(function () {
+                    unrender();
+                }, notificationTimeout);
+            });
         });
-        unrenderTimeout = setTimeout(function () {
-            unrender();
-        }, 5000);
     }
     function unrender() {
         clearTimeout(unrenderTimeout);
@@ -93,15 +159,12 @@ function GroupMeNotification(message, group) {
     this.getGroupId = getGroupId;
 }
 
-function GroupMeNotifier(groupMe, options) {
+function GroupMeNotifier(groupMe) {
     var client = null;
     var subscription = null;
     var groupCache = new GroupMeGroupCache(groupMe);
     var notifications = [];
     var events = new EventEmitter();
-
-    options = options || {};
-    var showMessagesFromUser = options.showMessagesFromUser || false;
 
     function start() {
         var notifier = this;
@@ -126,7 +189,6 @@ function GroupMeNotifier(groupMe, options) {
             groupMe.getCache(function (cache) {
                 var token = cache.token;
                 client = new Faye.Client('https://push.groupme.com/faye');
-                client.disable('websocket');
                 client.addExtension({
                     outgoing: function(message, callback){
                         if (message.channel !== '/meta/subscribe'){
@@ -139,13 +201,14 @@ function GroupMeNotifier(groupMe, options) {
                     }
                 });
                 subscription = client.subscribe('/user/' + userId, function (message) {
-                    console.log("Got message");
-                    console.dir(message);
                     if (message.type == "line.create") {
                         events.trigger("show", message);
-                        if (showMessagesFromUser || message.subject.sender_id !== userId) {
-                            show(message);
-                        }
+                        groupMe.getCache(function (cache) {
+                            var showMessagesFromUser = cache.selfNotifications;
+                            if (showMessagesFromUser || message.subject.sender_id !== userId) {
+                                show(message);
+                            }
+                        });
                     }
                 });
             });
@@ -388,9 +451,7 @@ function GroupMe() {
     this.setCache = setCache;
     this.events = events;
 
-    var notifier = new GroupMeNotifier(this, {
-        showMessagesFromUser: false
-    });
+    var notifier = new GroupMeNotifier(this);
     notifier.events.on("show", function (message) {
         events.trigger("notifier:show", message);
     });

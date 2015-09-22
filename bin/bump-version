@@ -65,13 +65,15 @@ next_version="$next_major_version.$next_minor_version"
 sed -i '.bak' -E "s/\"version\": \".+\"/\"version\": \"$next_version\"/" "$manifest_json_path"
 rm "$manifest_json_path.bak"
 
-sed -i '.bak' -E "s/version='.+'/version='$next_version'/g" "$update_xml_path"
-rm "$update_xml_path.bak"
-
 echo "=== bumped version from $version to $next_version ==="
-
-$project_root/bin/package-extension
-echo "=== repackaged extension ==="
 
 $project_root/bin/push-to-s3
 echo "=== pushed to s3 ==="
+
+zip_path="$project_root/groupme.zip"
+if [[ -e "$zip_path" ]]; then
+    rm $zip_path
+fi
+cd $project_root/extension
+zip -r "$zip_path" .
+echo "=== output zip at $zip_path ==="
