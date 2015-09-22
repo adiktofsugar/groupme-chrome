@@ -29,6 +29,5 @@
   "content_security_policy": "script-src 'self' https://push.groupme.com; object-src 'self'",
   "background": {
     "page": "background.html"
-  },
-  "update_url": "https://s3-us-west-1.amazonaws.com/groupme-chrome/update.xml"
+  }
 }
