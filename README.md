@@ -3,9 +3,7 @@ Goals:
 - Get notifications (basically copied from https://github.com/dmihal/GroupMe-Notifier)
 
 To install extension:
-- download https://s3-us-west-1.amazonaws.com/groupme-chrome/groupme-chrome.crx
-- go to chrome://extensions/
-- drag file from computer to extensions page
+- https://chrome.google.com/webstore/detail/groupme/fgaabpokhkojfifehchgohccioikblll
 
 Troubleshooting:
 - If you see a problem make an issue
@@ -13,4 +11,6 @@ Troubleshooting:
 - Thanks!
 
 Updating:
-- Use the bump-version script. If it doesn't work then fix it.
+- ./bin/bump-version
+- https://chrome.google.com/webstore/developer/dashboard
+- upload ./groupme.zip
