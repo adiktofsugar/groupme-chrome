@@ -114,3 +114,6 @@ a:active {
     outline: none;
     border-color: #aaa;
 }
+#post-message .post-message-message-list li {
+    word-break: break-word;
+}
