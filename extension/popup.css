@@ -117,3 +117,7 @@ a:active {
 #post-message .post-message-message-list li {
     word-break: break-word;
 }
+#post-message .post-messsage-list-author {
+    display:inline-block;
+    margin-right: 0.3em;
+}

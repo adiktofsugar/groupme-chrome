@@ -174,7 +174,7 @@ $(window).on('load', function () {
             groupMe.api('/groups/' + groupId + '/messages', function (error, messageResponse) {
                 if (error) {
                     postMessageRenderMessagesTimeout = setTimeout(function () {
-                        renderMessages();
+                        postMessageRenderMessages();
                     }, 1000);
                     errorRender(error);
                     infoRender("Couldn't load messages, trying again in 1 second...");
@@ -196,7 +196,10 @@ $(window).on('load', function () {
                     var groupMeMessage = new GroupMeMessage(message);
                     $messagesUl.append(
                         $('<li>')
-                        .text(groupMeMessage.name + " - " + groupMeMessage.toString())
+                            .append(
+                                $('<span class="post-messsage-list-author">').text(groupMeMessage.name)
+                            )
+                            .append(groupMeMessage.toHTML())
                     );
                 });
             });

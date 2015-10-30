@@ -81,7 +81,9 @@ function GroupMeAttachment(attachmentObject) {
     }
 
     this.type = type;
-    this.parameters = parameters;
+    for (var key in parameters) {
+        this[key] = parameters[key];
+    }
 }
 
 function GroupMeMessage(messageObject) {
@@ -96,10 +98,21 @@ function GroupMeMessage(messageObject) {
         return new GroupMeAttachment(attachmentObject);
     });
 
-    
     function toString() {
-        return (text || "(no text)") +
-            ((attachments.length) ? " - " +  attachments.length + " attachments" : "");
+        return text || '(no text)' +
+            (attachments.length ? attachments.length + ' attachments' : '');
+    }
+    function toHTML() {
+        var output = text || '';
+        attachments.forEach(function (attachment) {
+            if (attachment.type == "image") {
+                output += 
+                    '<div>' +
+                    '<img src="' + attachment.url + '" />' +
+                    '</div>';
+            }
+        });
+        return output;
     }
 
     this.id = id;
@@ -111,8 +124,8 @@ function GroupMeMessage(messageObject) {
     this.text = text;
     this.attachments = attachments;
     this.toString = toString;
+    this.toHTML = toHTML;
 }
-
 
 function GroupMeNotification(messageObject, group) {
     var message = new GroupMeMessage(messageObject.subject);
@@ -120,29 +133,64 @@ function GroupMeNotification(messageObject, group) {
     var attachments = message.attachments;
     var notificationId = null;
     var unrenderTimeout = null;
+    var children = [];
 
     function render() {
+        clearTimeout(unrenderTimeout);
         var options = {
-            type: 'basic',
             title: group.name || "GroupMe" + " - " + message.name,
-            message: message.toString(),
-            iconUrl: message.avatarUrl || group.image || 'icon.png'
+            iconUrl: group.image || message.avatarUrl || 'icon.png'
         };
+        if (children.length) {
+            console.log('has children');
+            options.type = 'list';
+            options.items = [this].concat(children).map(function (notification) {
+                var message = notification.getMessage();
+                return {
+                    title: message.name,
+                    message: message.toString()
+                };
+            });
+        } else {
+            options.type = 'basic';
+            options.message = message.toString();
+        }
         groupMe.getCache(function (cache) {
             var notificationTimeout = cache.notificationTimeout || 10000;
-            chrome.notifications.create(id, options, function (createdNotificationId) {
-                notificationId = createdNotificationId;
-                unrenderTimeout = setTimeout(function () {
-                    unrender();
-                }, notificationTimeout);
-            });
+            if (notificationId) {
+                console.log('has notificationId');
+                chrome.notifications.update(notificationId, options, function (wasUpdated) {
+                    console.log('wasUpdated', wasUpdated);
+                    unrenderTimeout = setTimeout(function () {
+                        unrender();
+                    }, notificationTimeout);
+                });
+            } else {
+                chrome.notifications.create(id, options, function (createdNotificationId) {
+                    notificationId = createdNotificationId;
+                    unrenderTimeout = setTimeout(function () {
+                        unrender();
+                    }, notificationTimeout);
+                });
+            }
         });
     }
     function unrender() {
         clearTimeout(unrenderTimeout);
         if (notificationId) {
             chrome.notifications.clear(notificationId);
+            notificationId = null;
         }
+    }
+
+    function isParentNotification(notification) {
+        return (notificationId &&
+            getGroupId() == notification.getGroupId() &&
+            getMessage().userId == notification.getMessage().userId);
+    }
+
+    function concatNotification(notification) {
+        children.push(notification);
     }
 
     function getNotificationId() {
@@ -151,12 +199,18 @@ function GroupMeNotification(messageObject, group) {
     function getGroupId() {
         return group.id;
     }
+    function getMessage() {
+        return message;
+    }
 
     this.render = render;
     this.unrender = unrender;
+    this.concatNotification = concatNotification;
+    this.isParentNotification = isParentNotification;
 
     this.getNotificationId = getNotificationId;
     this.getGroupId = getGroupId;
+    this.getMessage = getMessage;
 }
 
 function GroupMeNotifier(groupMe) {
@@ -226,8 +280,17 @@ function GroupMeNotifier(groupMe) {
         var subject = message.subject;
         groupCache.get(subject.group_id, function (error, group) {
             var notification = new GroupMeNotification(message, group);
-            notifications.push(notification);
-            notification.render();
+            var lastNotification = notifications[notifications.length - 1];
+            if (lastNotification && lastNotification.isParentNotification(notification)) {
+                lastNotification.concatNotification(notification);
+                console.log("concatting these two");
+                console.dir(lastNotification)
+                console.dir(notification);
+                lastNotification.render();
+            } else {
+                notifications.push(notification);
+                notification.render();
+            }
 
             var removeNotification;
             while (notifications.length > MAX_NOTIFICATIONS) {
