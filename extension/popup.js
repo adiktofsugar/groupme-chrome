@@ -55,15 +55,11 @@ $(window).on('load', function () {
         if (selectGroupRenderTimeout) {
             clearTimeout(selectGroupRenderTimeout);
         }
+        var $selectGroup = $('#select-group');
+        $selectGroup.find('ul li').remove();
+        $selectGroup.find('ul').append('<li>Loading...</li>');
         $('#select-group').removeClass('hidden');
         groupMe.api('/groups', function (error, groups) {
-            var $selectGroupSelect = $('#select-group select');
-            $selectGroupSelect.find('option')
-                .filter(function (index, option) {
-                    return option.value !== "";
-                })
-                .remove();
-            
             if (error) {
                 errorRender("Error loading groups: " + error.message +
                     "Trying again in 1 second.");
@@ -72,11 +68,13 @@ $(window).on('load', function () {
                 }, 1000);
                 return;
             }
+            $selectGroup.find('ul li').remove();
             groups.forEach(function (group) {
-                $selectGroupSelect.append(
-                    $('<option>')
-                    .val(group.id)
-                    .text(group.name)
+                $selectGroup.find('ul').append(
+                    $('<li>').append(
+                        $('<a href="#">' + group.name + '</a>')
+                        .data("id", group.id)
+                    )
                 );
             });
         });
@@ -84,10 +82,10 @@ $(window).on('load', function () {
     function selectGroupSelectChange(event) {
         event.preventDefault();
         event.stopPropagation();
-        var $selectGroupSelect = $('#select-group select');
-        var $selectedOption = $selectGroupSelect.find('option:selected');
-        var groupId = $selectedOption.val();
-        var groupName = $selectedOption.text();
+        var $selectGroup = $('#select-group');
+        var $button = $(event.currentTarget);
+        var groupId = $button.data("id");
+        var groupName = $button.text();
         if (!groupId) {
             errorRender("No group associated with item");
             return;
@@ -99,7 +97,7 @@ $(window).on('load', function () {
             render();
         });
     }
-    $('#select-group select').on('change', selectGroupSelectChange);
+    $('#select-group').on('click', 'a', selectGroupSelectChange);
 
 
     function selectedGroupRender() {
