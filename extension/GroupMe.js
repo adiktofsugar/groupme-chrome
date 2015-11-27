@@ -138,71 +138,27 @@ function GroupMeNotification(messageObject, group) {
     function render() {
         clearTimeout(unrenderTimeout);
         var options = {
+            type: 'basic',
+            message: message.toString(),
             title: message.name || group.name,
             iconUrl: message.avatarUrl || group.image || 'icon.png'
         };
-        if (children.length) {
-            console.log('has children');
-            options.type = 'list';
-            options.items = [this].concat(children).map(function (notification) {
-                var message = notification.getMessage();
-                var createdAt = message.createdAt;
-                var createdAtString = '' +
-                    createdAt.getHours() + ':' +
-                    createdAt.getMinutes() + ':' +
-                    createdAt.getSeconds();
-
-                return {
-                    title: createdAtString,
-                    message: message.toString()
-                };
-            });
-        } else {
-            options.type = 'basic';
-            options.message = message.toString();
-        }
+        
         groupMe.getCache(function (cache) {
             var notificationTimeout = cache.notificationTimeout || 10000;
-            if (notificationId) {
-                console.log('has notificationId');
-                chrome.notifications.update(notificationId, options, function (wasUpdated) {
-                    console.log('wasUpdated', wasUpdated);
-                    unrenderTimeout = setTimeout(function () {
-                        unrender();
-                    }, notificationTimeout);
-                });
-            } else {
-                chrome.notifications.create(id, options, function (createdNotificationId) {
-                    notificationId = createdNotificationId;
-                    unrenderTimeout = setTimeout(function () {
-                        unrender();
-                    }, notificationTimeout);
-                });
-            }
+            chrome.notifications.create(id, options, function (createdNotificationId) {
+                notificationId = createdNotificationId;
+                unrenderTimeout = setTimeout(function () {
+                    unrender();
+                }, notificationTimeout);
+            });
         });
     }
     function unrender() {
         clearTimeout(unrenderTimeout);
         if (notificationId) {
-            console.log("clearing notification...");
-            chrome.notifications.clear(notificationId, function (wasClosed) {
-                if (wasClosed) {
-                    notificationId = null;
-                }
-                console.log("clearing done. worked? " + wasClosed);
-            });
-            
+            chrome.notifications.clear(notificationId);
         }
-    }
-
-    function isParentNotification(notification) {
-        return (notificationId &&
-            getGroupId() == notification.getGroupId() &&
-            getMessage().userId == notification.getMessage().userId);
-    }
-
-    function concatNotification(notification) {
-        children.push(notification);
     }
 
     function getNotificationId() {
@@ -217,9 +173,6 @@ function GroupMeNotification(messageObject, group) {
 
     this.render = render;
     this.unrender = unrender;
-    this.concatNotification = concatNotification;
-    this.isParentNotification = isParentNotification;
-
     this.getNotificationId = getNotificationId;
     this.getGroupId = getGroupId;
     this.getMessage = getMessage;
@@ -292,17 +245,8 @@ function GroupMeNotifier(groupMe) {
         var subject = message.subject;
         groupCache.get(subject.group_id, function (error, group) {
             var notification = new GroupMeNotification(message, group);
-            var lastNotification = notifications[notifications.length - 1];
-            if (lastNotification && lastNotification.isParentNotification(notification)) {
-                lastNotification.concatNotification(notification);
-                console.log("concatting these two");
-                console.dir(lastNotification)
-                console.dir(notification);
-                lastNotification.render();
-            } else {
-                notifications.push(notification);
-                notification.render();
-            }
+            notifications.push(notification);
+            notification.render();
 
             var removeNotification;
             while (notifications.length > MAX_NOTIFICATIONS) {
@@ -322,12 +266,10 @@ function GroupMeNotifier(groupMe) {
         }
     });
     chrome.notifications.onClosed.addListener(function (notificationId, byUser) {
-        console.log("notification closed (byUser - " + byUser + ")");
         var notification = notifications.filter(function (notification) {
             return String(notification.getNotificationId()) == String(notificationId);
         })[0];
         if (notification) {
-            console.log("...closed listener. now unrendering...");
             notification.unrender();
         }
     });
