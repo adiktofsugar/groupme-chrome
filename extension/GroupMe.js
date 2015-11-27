@@ -138,16 +138,22 @@ function GroupMeNotification(messageObject, group) {
     function render() {
         clearTimeout(unrenderTimeout);
         var options = {
-            title: group.name || "GroupMe" + " - " + message.name,
-            iconUrl: group.image || message.avatarUrl || 'icon.png'
+            title: message.name || group.name,
+            iconUrl: message.avatarUrl || group.image || 'icon.png'
         };
         if (children.length) {
             console.log('has children');
             options.type = 'list';
             options.items = [this].concat(children).map(function (notification) {
                 var message = notification.getMessage();
+                var createdAt = message.createdAt;
+                var createdAtString = '' +
+                    createdAt.getHours() + ':' +
+                    createdAt.getMinutes() + ':' +
+                    createdAt.getSeconds();
+
                 return {
-                    title: message.name,
+                    title: createdAtString,
                     message: message.toString()
                 };
             });
@@ -178,8 +184,14 @@ function GroupMeNotification(messageObject, group) {
     function unrender() {
         clearTimeout(unrenderTimeout);
         if (notificationId) {
-            chrome.notifications.clear(notificationId);
-            notificationId = null;
+            console.log("clearing notification...");
+            chrome.notifications.clear(notificationId, function (wasClosed) {
+                if (wasClosed) {
+                    notificationId = null;
+                }
+                console.log("clearing done. worked? " + wasClosed);
+            });
+            
         }
     }
 
@@ -309,32 +321,40 @@ function GroupMeNotifier(groupMe) {
             }
         }
     });
-    chrome.notifications.onClicked.addListener(function (notificationId) {
-        var notification = notifications.map(function (notification) {
-            if (notification.getNotificationId() == notificationId) {
-                return notification;
-            }
+    chrome.notifications.onClosed.addListener(function (notificationId, byUser) {
+        console.log("notification closed (byUser - " + byUser + ")");
+        var notification = notifications.filter(function (notification) {
+            return String(notification.getNotificationId()) == String(notificationId);
         })[0];
         if (notification) {
-            var newURL = "https://app.groupme.com/chats/" + notification.getGroupId();
-            chrome.tabs.query({"url" : "https://app.groupme.com/*"}, function(tabs){
-                if (tabs.length > 0){
-                    var matchedTab = tabs[0];
-                    chrome.windows.update(matchedTab.windowId, {
-                        "focused": true
-                    });
-                    chrome.tabs.update(matchedTab.id, {
-                        "active": true,
-                        "url": (matchedTab.url == newURL) ? undefined : newURL
-                    });
-                } else {
-                    chrome.tabs.create({
-                        url: newURL
-                    });
-                }
-            });
+            console.log("...closed listener. now unrendering...");
+            notification.unrender();
         }
     });
+    // chrome.notifications.onClicked.addListener(function (notificationId) {
+    //     var notification = notifications.filter(function (notification) {
+    //         return String(notification.getNotificationId()) == String(notificationId);
+    //     })[0];
+    //     if (notification) {
+    //         var newURL = "https://app.groupme.com/chats/" + notification.getGroupId();
+    //         chrome.tabs.query({"url" : "https://app.groupme.com/*"}, function(tabs){
+    //             if (tabs.length > 0){
+    //                 var matchedTab = tabs[0];
+    //                 chrome.windows.update(matchedTab.windowId, {
+    //                     "focused": true
+    //                 });
+    //                 chrome.tabs.update(matchedTab.id, {
+    //                     "active": true,
+    //                     "url": (matchedTab.url == newURL) ? undefined : newURL
+    //                 });
+    //             } else {
+    //                 chrome.tabs.create({
+    //                     url: newURL
+    //                 });
+    //             }
+    //         });
+    //     }
+    // });
 
     this.start = start;
     this.stop = stop;
