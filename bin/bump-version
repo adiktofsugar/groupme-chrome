@@ -77,3 +77,5 @@ fi
 cd $project_root/extension
 zip -r "$zip_path" .
 echo "=== output zip at $zip_path ==="
+
+echo "now upload it at https://chrome.google.com/webstore/developer/dashboard"
