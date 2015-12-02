@@ -121,3 +121,6 @@ a:active {
     display:inline-block;
     margin-right: 0.3em;
 }
+#post-message .post-message-message-list li img {
+    max-width: 100%;
+}

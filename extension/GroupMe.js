@@ -74,10 +74,13 @@ function GroupMeAttachment(attachmentObject) {
     switch (type) {
         case "image":
             parameters = imageParameters;
+            break;
         case "split":
             parameters = splitParameters;
+            break;
         case "emoji":
             parameters = emojiParameters;
+            break;
     }
 
     this.type = type;
@@ -97,6 +100,19 @@ function GroupMeMessage(messageObject) {
     var attachments = messageObject.attachments.map(function (attachmentObject) {
         return new GroupMeAttachment(attachmentObject);
     });
+    (text || '').autoLink({
+        callback: function (url) {
+            if (!url.match(/\.(gif|png|jpe?g)$/i)) {
+                return;
+            }
+            attachments.push(
+                new GroupMeAttachment({
+                    type: 'image',
+                    url: url
+                })
+            );
+        }
+    });
 
     function toString() {
         return text || '(no text)' +
@@ -108,9 +124,12 @@ function GroupMeMessage(messageObject) {
             if (attachment.type == "image") {
                 output += 
                     '<div>' +
-                    '<img src="' + attachment.url + '" />' +
+                    '<img src="' + attachment.url + '"/>' +
                     '</div>';
             }
+        });
+        output = output.autoLink({
+            target: '_blank'
         });
         return output;
     }
@@ -143,7 +162,6 @@ function GroupMeNotification(messageObject, group) {
             title: message.name || group.name,
             iconUrl: message.avatarUrl || group.image || 'icon.png'
         };
-        
         groupMe.getCache(function (cache) {
             var notificationTimeout = cache.notificationTimeout || 10000;
             chrome.notifications.create(id, options, function (createdNotificationId) {
