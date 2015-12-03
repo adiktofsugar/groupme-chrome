@@ -55,33 +55,65 @@ function GroupMeGroupCache(groupMe) {
 
 function GroupMeAttachment(attachmentObject) {
     var type = attachmentObject.type;
-    var imageParameters = {
-        url: attachmentObject.url
-    };
-    var locationParameters = {
-        lat: attachmentObject.lat,
-        lng: attachmentObject.lng
-    };
-    var splitParameters = {
-        token: attachmentObject.token
-    };
-    var emojiParameters = {
-        placeholder: attachmentObject.placeholder,
-        charmap: attachmentObject.charmap
-    };
+
+    function getVideoParameters() {
+        var url = attachmentObject.url;
+        if (!url) return;
+        
+        var sources = [];
+        var posterUrl;
+
+        var extension = url.match(/\.([a-zA-Z0-9]+)$/)[1].toLowerCase();
+        var gifvMatch = url.match(/imgur\.com\/(.+?)\.gifv$/);
+        if (gifvMatch) {
+            var id = gifvMatch[1];
+            posterUrl = 'https://i.imgur.com/' + id + 'h.jpg';
+            sources = [
+                {
+                    type: 'video/mp4',
+                    url: 'https://i.imgur.com/' + id + '.mp4'
+                },
+                {
+                    type: 'video/webm',
+                    url: 'https://i.imgur.com/' + id + '.webm'
+                }
+            ];
+        } else {
+            if (url.match(/^\/\//)) {
+                url = 'http:' + url;
+            } else if (!url.match(/^https?:\/\//)) {
+                url = 'http://' + url;
+            }
+            sources = [
+                {
+                    type: 'video/' + extension,
+                    url: url
+                }
+            ];
+        }
+
+        return {
+            posterUrl: posterUrl,
+            sources: sources
+        };
+    }
 
     var parameters;
-    switch (type) {
-        case "image":
-            parameters = imageParameters;
-            break;
-        case "split":
-            parameters = splitParameters;
-            break;
-        case "emoji":
-            parameters = emojiParameters;
-            break;
-    }
+    if (type == 'video') parameters = getVideoParameters();
+    if (type == 'image') parameters = {
+            url: attachmentObject.url
+        }
+    if (type == 'location') parameters = {
+            lat: attachmentObject.lat,
+            lng: attachmentObject.lng
+        }
+    if (type == 'split') parameters = {
+            token: attachmentObject.token
+        }
+    if (type == 'emoji') parameters = {
+            placeholder: attachmentObject.placeholder,
+            charmap: attachmentObject.charmap
+        }
 
     this.type = type;
     for (var key in parameters) {
@@ -102,15 +134,22 @@ function GroupMeMessage(messageObject) {
     });
     (text || '').autoLink({
         callback: function (url) {
-            if (!url.match(/\.(gif|png|jpe?g)$/i)) {
-                return;
+            if (url.match(/\.(gif|png|jpe?g)$/i)) {
+                attachments.push(
+                    new GroupMeAttachment({
+                        type: 'image',
+                        url: url
+                    })
+                );
+            } else if (url.match(/\.(gifv|mp4|webm)$/i)) {
+                attachments.push(
+                    new GroupMeAttachment({
+                        type: 'video',
+                        url: url
+                    })
+                );
             }
-            attachments.push(
-                new GroupMeAttachment({
-                    type: 'image',
-                    url: url
-                })
-            );
+            
         }
     });
 
@@ -120,8 +159,19 @@ function GroupMeMessage(messageObject) {
     }
     function toHTML() {
         var output = text || '';
-        attachments.forEach(function (attachment) {
-            if (attachment.type == "image") {
+        attachments.forEach(function (attachment) {;
+            if (attachment.type == "video") {
+                output += 
+                    '<div>' +
+                    '<video poster="' + attachment.posterUrl +
+                        '" preload="auto" loop="loop" autoplay="autoplay">' +
+                    attachment.sources.map(function (source) {
+                        return '<source type="' + source.type + '" ' +
+                            'src="' + source.url + '">';
+                    }).join('') +
+                    '</video' +
+                    '</div>';
+            } else if (attachment.type == "image") {
                 output += 
                     '<div>' +
                     '<img src="' + attachment.url + '"/>' +

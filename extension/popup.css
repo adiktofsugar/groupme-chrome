@@ -134,6 +134,7 @@ a:active {
     display:inline-block;
     margin-right: 0.3em;
 }
-#post-message .post-message-message-list li img {
+#post-message .post-message-message-list li img,
+#post-message .post-message-message-list li video {
     max-width: 100%;
 }
