@@ -159,48 +159,107 @@ $(window).on('load', function () {
     function postMessageRender() {
         $('#post-message').removeClass('hidden');
         $('#post-message textarea').focus();
+        $('#post-message .post-message-message-list li:not(.post-message-message-list-more-container)').remove();
+        $('#post-message .post-message-message-list li.post-message-message-list-more-container').addClass('hidden');
         postMessageRenderMessages();
     }
-    var postMessageRenderMessagesTimeout = null;
-    function postMessageRenderMessages() {
-        clearTimeout(postMessageRenderMessagesTimeout);
+    var cachedMessagesGroupId = null;
+    var cachedMessages = [];
+    function getMessages(options, callback) {
+        if (callback === undefined) {
+            callback = options;
+            options = {};
+        }
+        options = options || {};
+        var getEarlier = options.getEarlier;
+
         groupMe.getCache(function (cache) {
             var groupId = cache.groupId;
             if (!groupId) {
+                var error = new Error('no group id');
+                error.type = 'nogroupid';
+                return callback(error);
+            }
+            if (groupId !== cachedMessagesGroupId) {
+                cachedMessages = [];
+            }
+            cachedMessagesGroupId = groupId;
+            var latestMessage = cachedMessages[0];
+            var earliestMessage = cachedMessages[cachedMessages.length - 1];
+
+            var beforeId;
+            var sinceId;
+            if (getEarlier && earliestMessage) {
+                beforeId = earliestMessage.id;
+            } else if (latestMessage) {
+                sinceId = latestMessage.id;
+            }
+            groupMe.api('/groups/' + groupId + '/messages', {
+                data: {
+                    before_id: beforeId,
+                    since_id: sinceId
+                }
+            }, function (error, messageResponse) {
+                if (error) {
+                    return callback(error);
+                }
+                if (messageResponse) {
+                    var messages = messageResponse.messages;
+                    messages.sort(function (a, b) {
+                        if (a.created_at > b.created_at) {
+                            return -1;
+                        } else if (a.created_at < b.created_at) {
+                            return 1;
+                        }
+                        return 0;
+                    });
+                    if (getEarlier) {
+                        cachedMessages = cachedMessages.concat(messages);
+                    } else {
+                        cachedMessages = messages.concat(cachedMessages);
+                    }
+                } else {
+                    cachedMessages.noMore = true;
+                }
+                callback(null, cachedMessages);
+            });
+        });
+    }
+    var postMessageRenderMessagesTimeout = null;
+    function postMessageRenderMessages(options) {
+        options = options || {};
+        clearTimeout(postMessageRenderMessagesTimeout);
+        getMessages(options, function (error, messages) {
+            if (error && error.type == 'nogroupid') {
                 return;
             }
-            groupMe.api('/groups/' + groupId + '/messages', function (error, messageResponse) {
-                if (error) {
-                    postMessageRenderMessagesTimeout = setTimeout(function () {
-                        postMessageRenderMessages();
-                    }, 1000);
-                    errorRender(error);
-                    infoRender("Couldn't load messages, trying again in 1 second...");
-                    return;
-                }
-                var messages = messageResponse.messages;
-                messages.sort(function (a, b) {
-                    if (a.created_at > b.created_at) {
-                        return -1;
-                    } else if (a.created_at < b.created_at) {
-                        return 1;
-                    }
-                    return 0;
-                });
-                var $messagesUl = $('#post-message .post-message-message-list');
-                $messagesUl.find('li').remove();
-                messages = messages.slice(0, 5);
-                messages.forEach(function (message) {
-                    var groupMeMessage = new GroupMeMessage(message);
-                    $messagesUl.append(
-                        $('<li>')
-                            .append(
-                                $('<span class="post-messsage-list-author">').text(groupMeMessage.name)
-                            )
-                            .append(groupMeMessage.toHTML())
-                    );
-                });
+            if (error) {
+                postMessageRenderMessagesTimeout = setTimeout(function () {
+                    postMessageRenderMessages(options);
+                }, 1000);
+                errorRender(error);
+                infoRender("Couldn't load messages, trying again in 1 second...");
+                return;
+            }
+            var $messagesUl = $('#post-message .post-message-message-list');
+            $messagesUl.find('li:not(.post-message-message-list-more-container)').remove();
+            messages.forEach(function (message) {
+                var groupMeMessage = new GroupMeMessage(message);
+                $messagesUl.append(
+                    $('<li>')
+                        .append(
+                            $('<span class="post-messsage-list-author">').text(groupMeMessage.name)
+                        )
+                        .append(groupMeMessage.toHTML())
+                );
             });
+            var $noMoreContainer = $messagesUl.find('li.post-message-message-list-more-container');
+            $noMoreContainer.appendTo($messagesUl);
+            if (messages.noMore) {
+                $noMoreContainer.addClass("hidden");
+            } else {
+                $noMoreContainer.removeClass("hidden");
+            }
         });
     }
     function postMessage(message) {
@@ -255,6 +314,11 @@ $(window).on('load', function () {
         postMessage(message);
     }
     $('#post-message form').on('submit', postMessageFormHandler);
+    function postMessageMoreHandler(event) {
+        event.preventDefault();
+        postMessageRenderMessages({ getEarlier: true });
+    }
+    $('#post-message .post-message-message-list-more-button').on('click', postMessageMoreHandler);
 
     function render() {
         $('#login, #logged-in, #select-group, #selected-group, #post-message').addClass('hidden');
@@ -272,6 +336,8 @@ $(window).on('load', function () {
             postMessageRender();
         });
     }
-    groupMe.events.on("notifier:show", postMessageRenderMessages);
+    groupMe.events.on("notifier:show", function () {
+        postMessageRenderMessages();
+    });
     render();
 });

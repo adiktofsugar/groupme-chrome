@@ -360,17 +360,20 @@ function GroupMe() {
                 callback(null, data.response);
             }
             var type = options.type || "get";
-            var data = options.data ? JSON.stringify(options.data) : null;
+            var data = options.data;
             $.ajax({
                 url: baseApiUri + path,
                 type: type,
-                data: data,
+                data: (type == 'get') ? data : JSON.stringify(options.data),
                 contentType: "application/json",
-                processData: false,
+                processData: (type == 'get') ? true : false,
                 beforeSend: function (xhr) {
                     xhr.setRequestHeader('X-Access-Token', token);
                 },
-                success: function (data) {
+                success: function (data, status) {
+                    if (!data && status === 'notmodified') {
+                        return callback(null);
+                    }
                     complete(data);
                 },
                 error: function (xhr, status, error) {

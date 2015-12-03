@@ -114,8 +114,21 @@ a:active {
     outline: none;
     border-color: #aaa;
 }
+#post-message .post-message-message-list {
+    max-height: 300px;
+    overflow-y: scroll;
+}
 #post-message .post-message-message-list li {
     word-break: break-word;
+}
+#post-message .post-message-message-list .post-message-message-list-more-container {
+    list-style-type: none;
+    padding: 0;
+}
+#post-message .post-message-message-list .post-message-message-list-more-button {
+    display: block;
+    padding: 0.3em;
+    text-align: center;
 }
 #post-message .post-messsage-list-author {
     display:inline-block;
