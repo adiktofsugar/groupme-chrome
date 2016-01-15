@@ -1,5 +1,7 @@
+var backgroundPage = chrome.extension.getBackgroundPage();
+chrome.runtime.connect({name: backgroundPage.popupPortName});
+
 $(window).on('load', function () {
-    var backgroundPage = chrome.extension.getBackgroundPage();
     var groupMe = backgroundPage.groupMe;
     var GroupMeMessage = backgroundPage.GroupMeMessage;
 

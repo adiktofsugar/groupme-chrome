@@ -4,7 +4,8 @@ var nameToTokenMap = {
     'groupName': 'groupme-chrome-groupName',
 
     'selfNotifications': 'selfNotifications',
-    'notificationTimeout': 'notificationTimeout'
+    'notificationTimeout': 'notificationTimeout',
+    'enableNotifications': 'enableNotifications'
 };
 
 function EventEmitter() {
@@ -292,7 +293,9 @@ function GroupMeNotifier(groupMe) {
                         events.trigger("show", message);
                         groupMe.getCache(function (cache) {
                             var showMessagesFromUser = cache.selfNotifications;
-                            if (showMessagesFromUser || message.subject.sender_id !== userId) {
+                            var showMessages = (showMessagesFromUser || message.subject.sender_id !== userId) &&
+                                cache.enableNotifications;
+                            if (showMessages) {
                                 show(message);
                             }
                         });
@@ -341,31 +344,6 @@ function GroupMeNotifier(groupMe) {
             notification.unrender();
         }
     });
-    // chrome.notifications.onClicked.addListener(function (notificationId) {
-    //     var notification = notifications.filter(function (notification) {
-    //         return String(notification.getNotificationId()) == String(notificationId);
-    //     })[0];
-    //     if (notification) {
-    //         var newURL = "https://app.groupme.com/chats/" + notification.getGroupId();
-    //         chrome.tabs.query({"url" : "https://app.groupme.com/*"}, function(tabs){
-    //             if (tabs.length > 0){
-    //                 var matchedTab = tabs[0];
-    //                 chrome.windows.update(matchedTab.windowId, {
-    //                     "focused": true
-    //                 });
-    //                 chrome.tabs.update(matchedTab.id, {
-    //                     "active": true,
-    //                     "url": (matchedTab.url == newURL) ? undefined : newURL
-    //                 });
-    //             } else {
-    //                 chrome.tabs.create({
-    //                     url: newURL
-    //                 });
-    //             }
-    //         });
-    //     }
-    // });
-
     this.start = start;
     this.stop = stop;
     this.events = events;
