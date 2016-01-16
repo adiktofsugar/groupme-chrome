@@ -245,15 +245,28 @@ $(window).on('load', function () {
             }
             var $messagesUl = $('#post-message .post-message-message-list');
             $messagesUl.find('li:not(.post-message-message-list-more-container)').remove();
-            messages.forEach(function (message) {
+            messages.forEach(function (message, index) {
+                var lastMessage = messages[index-1];
+                var lastGroupMeMessage = lastMessage && (new GroupMeMessage(lastMessage));
                 var groupMeMessage = new GroupMeMessage(message);
-                $messagesUl.append(
-                    $('<li>')
-                        .append(
-                            $('<span class="post-messsage-list-author">').text(groupMeMessage.name)
-                        )
-                        .append(groupMeMessage.toHTML())
-                );
+                var defaultAvatarUrl = chrome.extension.getURL('default-contact-icon.png');
+                var $author = $('<span class="post-messsage-list-author">')
+                    .append(
+                        $('<img class="post-message-list-author-avatar">')
+                        .attr('src', groupMeMessage.avatarUrl || defaultAvatarUrl)
+                        .attr('title', groupMeMessage.name)
+                    );
+
+                var $container = $('<li>').append($author);
+                var $message = $('<div class="post-message-list-message">')
+                        .append(groupMeMessage.toHTML());
+                
+                if (lastGroupMeMessage && lastGroupMeMessage.userId == groupMeMessage.userId) {
+                    $container = $messagesUl.find('li:last-child');
+                } else {
+                    $messagesUl.append($container);
+                }
+                $container.append($message);
             });
             var $noMoreContainer = $messagesUl.find('li.post-message-message-list-more-container');
             $noMoreContainer.appendTo($messagesUl);
