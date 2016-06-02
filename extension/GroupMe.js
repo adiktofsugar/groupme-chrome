@@ -61,11 +61,17 @@ function GroupMeAttachment(attachmentObject) {
         var url = attachmentObject.url;
         if (!url) return;
         
-        var sources = [];
+        var sources;
+        var iframeUrl;
         var posterUrl;
+        var showControls = false;
 
-        var extension = url.match(/\.([a-zA-Z0-9]+)$/)[1].toLowerCase();
+        var urlWithoutQuery = url.replace(/\?.*/, '').replace(/\#.*/, '');
+        var extensionMatch = urlWithoutQuery.match(/\.([a-zA-Z0-9]+)$/);
+        var extension = extensionMatch && extensionMatch[1].toLowerCase();
         var gifvMatch = url.match(/imgur\.com\/(.+?)\.gifv$/);
+        var youtubeMatch = url.match(/youtu\.be\/([^\/]+)/);
+        console.log("url", url);
         if (gifvMatch) {
             var id = gifvMatch[1];
             posterUrl = 'https://i.imgur.com/' + id + 'h.jpg';
@@ -79,7 +85,10 @@ function GroupMeAttachment(attachmentObject) {
                     url: 'https://i.imgur.com/' + id + '.webm'
                 }
             ];
-        } else {
+        } else if (youtubeMatch) {
+            var id = youtubeMatch[1];
+            iframeUrl = "https://www.youtube.com/embed/" + id;
+        } else if (extension) {
             if (url.match(/^\/\//)) {
                 url = 'http:' + url;
             } else if (!url.match(/^https?:\/\//)) {
@@ -91,11 +100,15 @@ function GroupMeAttachment(attachmentObject) {
                     url: url
                 }
             ];
+            // if the video COULD be a non-gif, show the controls
+            showControls = true;
         }
 
         return {
+            showControls: showControls,
             posterUrl: posterUrl,
-            sources: sources
+            sources: sources,
+            iframeUrl: iframeUrl
         };
     }
 
@@ -142,7 +155,14 @@ function GroupMeMessage(messageObject) {
                         url: url
                     })
                 );
-            } else if (url.match(/\.(gifv|mp4|webm)$/i)) {
+            } else if (url.match(/\.(gifv|mp4|webm|ogg)/i)) {
+                attachments.push(
+                    new GroupMeAttachment({
+                        type: 'video',
+                        url: url
+                    })
+                );
+            } else if (url.match(/^https?:\/\/youtu\.be/)) {
                 attachments.push(
                     new GroupMeAttachment({
                         type: 'video',
@@ -161,17 +181,23 @@ function GroupMeMessage(messageObject) {
     function toHTML() {
         var output = text || '';
         attachments.forEach(function (attachment) {;
-            if (attachment.type == "video") {
+            if (attachment.type == "video" && !attachment.iframeUrl) {
                 output += 
                     '<div>' +
-                    '<video poster="' + attachment.posterUrl +
-                        '" preload="auto" loop="loop" autoplay="autoplay">' +
+                    '<video ' + (attachment.posterUrl ? 'poster="' + attachment.posterUrl + '"' : "") +
+                        ' muted ' + (attachment.showControls ? "controls " : "") + 
+                        'preload="auto" loop="loop" autoplay="autoplay">' +
                     attachment.sources.map(function (source) {
                         return '<source type="' + source.type + '" ' +
                             'src="' + source.url + '">';
                     }).join('') +
                     '</video' +
                     '</div>';
+            } else if (attachment.type == "video" && attachment.iframeUrl) {
+                output +=
+                    '<iframe type="text/html" width="320" height="240"' +
+                      'src="' + attachment.iframeUrl + '"' +
+                      'frameborder="0"/>';
             } else if (attachment.type == "image") {
                 output += 
                     '<div>' +
@@ -353,6 +379,9 @@ function GroupMe() {
     var authorizeUri = 'https://oauth.groupme.com/oauth/authorize?client_id=KRSKsn6m30Q8Bey31dBRxKsOBmtMMVQXowHdU1KsO8SinOPV';
     var oauthCallbackUri = 'https://s3-us-west-1.amazonaws.com/groupme-chrome/oauth_callback.html';
     var events = new EventEmitter();
+    var loginProgress = {
+        error: null
+    };
 
     var baseApiUri = 'https://api.groupme.com/v3';
     function ApiError(meta) {
@@ -424,9 +453,9 @@ function GroupMe() {
         function onUpdated (tabId, changeInfo, tab) {
             if (popupTabId == tabId) {
                 console.log("popup was updated - " + 
-                    "status: " + changeInfo.status +
+                    "status: " + changeInfo.status + " " +
                     "url: " + changeInfo.url);
-                if (changeInfo.url.match(oauthCallbackUri)) {
+                if (changeInfo.url && changeInfo.url.match(oauthCallbackUri)) {
                     done();
                 }
             }
@@ -437,12 +466,28 @@ function GroupMe() {
             chrome.tabs.onUpdated.removeListener(onUpdated);
 
             chrome.tabs.get(popupTabId, function (tab) {
+                if (!tab) {
+                    console.log("no popuptab from id " + popupTabId +
+                        ", which is weird.");
+                    return callback(new Error("couldn't log in - no tab"));
+                }
+                popupTabId = null;
                 var uri = new Uri(tab.url);
+                console.log(uri.toString());
+
+                console.log("removing tab with id " + tab.id);
                 chrome.tabs.remove(tab.id, function () {
                     var token = uri.getQueryParamValue("access_token");
+                    var errorMessage = null;
                     if (!token) {
-                        callback(new Error("Couldn't log in"));
+                        errorMessage = "no token from uri " + uri.toString();
+                    }
+                    loginProgress.error = errorMessage;
+                    if (errorMessage) {
+                        console.error(errorMessage);
+                        callback(new Error(errorMessage));
                     } else {
+                        console.log("token is " + token);
                         setCache({
                             token: token
                         }, function () {
@@ -460,17 +505,24 @@ function GroupMe() {
             chrome.tabs.onUpdated.addListener(onUpdated);
 
             function openPopup() {
+                // first i open the tab, which sets the popupTabId
+                // onUpdated, I call done if everything matches
                 if (popupTabId === null) {
                     chrome.tabs.create({
                         url: authorizeUri
                     }, function (tab) {
                         popupTabId = tab.id;
                     })
+
+                // if they click the login button again before it's done, i focus it
                 } else {
                     chrome.tabs.get(popupTabId, function (tab) {
+
+                        // if for some reason there's no tab, i just reset the whole thing
                         if (!tab) {
                             popupTabId = null;
-                            return openPopup();
+                            setTimeout(openPopup, 1);
+                            return;
                         }
                         chrome.windows.update(tab.windowId, {
                             "focused": true
@@ -491,6 +543,14 @@ function GroupMe() {
             token: null
         }, function () {
             callback();
+        });
+    }
+
+    function loginToken(token, callback) {
+        setCache({
+            token: token
+        }, function () {
+            callback(null);
         });
     }
 
@@ -518,8 +578,10 @@ function GroupMe() {
         chrome.storage.sync.set(cache, callback);
     }
 
+    this.loginProgress = loginProgress;
     this.login = login;
     this.logout = logout;
+    this.loginToken = loginToken;
     this.api = api;
     this.getCache = getCache;
     this.setCache = setCache;

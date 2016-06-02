@@ -26,6 +26,15 @@ $(window).on('load', function () {
 
     function loginRender() {
         $('#login').removeClass('hidden');
+        $('#login .error-message').addClass('hidden');
+        $('#login .login-token-form').addClass('hidden');
+        if (groupMe.loginProgress.error) {
+            $('#login .error-message')
+                .text(groupMe.loginProgress.error)
+                .removeClass('hidden');
+            $('#login .login-token-form')
+                .removeClass('hidden');
+        }
     }
     function loginClickHandler(event) {
         event.preventDefault();
@@ -38,6 +47,18 @@ $(window).on('load', function () {
         });
     }
     $('#login .login-login').on('click', loginClickHandler);
+    function loginTokenSubmit(event) {
+        event.preventDefault();
+        var token = $('#login .login-token-form input').val();
+        groupMe.loginToken(token, function (error) {
+            if (error) {
+                $('#error').text("Couldn't log in. " + error.message).removeClass('hidden');
+                return;
+            }
+            render();
+        });
+    }
+    $('#login .login-token-form').on('submit', loginTokenSubmit);
 
 
     function loggedInRender() {

@@ -3,7 +3,7 @@
 
   "name": "GroupMe",
   "description": "Allows sharing to GroupMe from desktop",
-  "version": "1.15",
+  "version": "1.16",
 
   "icons": {
     "16": "icon16.png",
