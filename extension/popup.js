@@ -93,12 +93,22 @@ $(window).on('load', function () {
             }
             $selectGroup.find('ul li').remove();
             groups.forEach(function (group) {
-                $selectGroup.find('ul').append(
-                    $('<li>').append(
-                        $('<a href="#">' + group.name + '</a>')
-                        .data("id", group.id)
-                    )
-                );
+                var $group = $('<li>');
+                $group.append(
+                        $('<a class="select" href="#">' + group.name + '</a>')
+                        .data({
+                            "groupId": group.id,
+                            "groupName": group.name
+                        })
+                    );
+                $group.append(
+                        $('<a class="search" href="#">search</a>')
+                        .data({
+                            "groupId": group.id,
+                            "groupName": group.name
+                        })
+                    );
+                $selectGroup.find('ul').append($group);
             });
         });
     }
@@ -107,8 +117,8 @@ $(window).on('load', function () {
         event.stopPropagation();
         var $selectGroup = $('#select-group');
         var $button = $(event.currentTarget);
-        var groupId = $button.data("id");
-        var groupName = $button.text();
+        var groupId = $button.data("groupId");
+        var groupName = $button.data("groupName");
         if (!groupId) {
             errorRender("No group associated with item");
             return;
@@ -120,7 +130,27 @@ $(window).on('load', function () {
             render();
         });
     }
-    $('#select-group').on('click', 'a', selectGroupSelectChange);
+    $('#select-group').on('click', 'a.select', selectGroupSelectChange);
+
+    function selectGroupSearch(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var $button = $(event.currentTarget);
+        var groupId = $button.data("groupId");
+        var groupName = $button.data("groupName");
+        if (!groupId) {
+            errorRender("No group associated with item");
+            return;
+        }
+        groupMe.setCache({
+            groupId: groupId,
+            groupName: groupName,
+            groupSearch: true
+        }, function () {
+            render();
+        });
+    }
+    $('#select-group').on('click', 'a.search', selectGroupSearch);
 
 
     function selectedGroupRender() {
@@ -178,12 +208,102 @@ $(window).on('load', function () {
     $('#selected-group .selected-group-share-current-page-button')
         .on('click', selectedGroupShareCurrentPageButtonClickHandler);
 
+    function searchMessageRender() {
+        $('#search-message').removeClass('hidden');
+        $('#search-message .message-list li').remove();
+        groupMe.getCache(function (cache) {
+            if (cache.groupSearch === true) {
+                searchMessageRenderTerm();
+            } else {
+                searchMessageRenderMessages();
+            }
+        });
+    }
+    
+    function searchMessageRenderTerm() {
+        groupMe.getCache(function (cache) {
+            var $form = $(
+                '<form>' +
+                '<input type="text" name="search" placeholder="Enter search term" />' +
+                '<button type="submit">Search</button>' +
+                '<a href="#" class="cancel">cancel</a>' +
+                '</form>');
+            $form.on('click', 'a.cancel', function (event) {
+                event.preventDefault();
+                groupMe.setCache({
+                    groupSearch: false
+                }, function () {
+                    render();
+                });
+            });
+            $form.on('submit', function (event) {
+                event.preventDefault();
+                var $input = $form.find('input[name="search"]');
+                var searchTerm = $input.val();
+                groupMe.setCache({
+                    groupSearch: searchTerm
+                }, function () {
+                    render();
+                });
+            });
+            var $container = $('<li></li>');
+            $container.append($form);
+            $('#search-message .message-list').append($container);
+        });
+    }
+
+    var searchMessageRequest;
+    function searchMessageRenderMessages() {
+        groupMe.getCache(function (cache) {
+            function addMessage(message) {
+                var groupMeMessage = new GroupMeMessage(message);
+                var defaultAvatarUrl = chrome.extension.getURL('default-contact-icon.png');
+                var $author = $('<span class="message-list-author">')
+                    .append(
+                        $('<img class="message-list-author-avatar">')
+                        .attr('src', groupMeMessage.avatarUrl || defaultAvatarUrl)
+                        .attr('title', groupMeMessage.name)
+                    );
+                var $message = $('<div class="message-list-message">')
+                        .append(groupMeMessage.toHTML());
+                var $container = $('<li>');
+                $container.append($author);
+                $container.append($message);
+                $('#search-message .message-list').append($container);
+            }
+            
+            var $status = $('<li class="status">Searching... <a href="#">abort</a></li>');
+            searchMessageRequest = groupMe.searchText(cache.groupSearch, function (e, messages) {
+                for (var i = 0; i < messages.length; i++) {
+                    addMessage(messages[i]);
+                }
+                if (searchMessageRequest.done) {
+                    $status.html('Finished. <a href="#">cancel</a>');
+                }
+            });
+            $('#search-message .message-list').append($status);
+        });
+    }
+    $('#search-message .message-list').on('click', '.status a', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (searchMessageRequest && !searchMessageRequest.done) {
+            searchMessageRequest.abort();
+        } else {
+            groupMe.setCache({
+                groupSearch: false
+            }, function () {
+                $('#search-message .message-list li').remove();
+                render();
+            });
+        }
+    });
 
     function postMessageRender() {
         $('#post-message').removeClass('hidden');
         $('#post-message textarea').focus();
-        $('#post-message .post-message-message-list li:not(.post-message-message-list-more-container)').remove();
-        $('#post-message .post-message-message-list li.post-message-message-list-more-container').addClass('hidden');
+        $('#post-message .message-list li:not(.message-list-more-container)').remove();
+        $('#post-message .message-list li.message-list-more-container').addClass('hidden');
         postMessageRenderMessages();
     }
     var cachedMessagesGroupId = null;
@@ -264,22 +384,22 @@ $(window).on('load', function () {
                 infoRender("Couldn't load messages, trying again in 1 second...");
                 return;
             }
-            var $messagesUl = $('#post-message .post-message-message-list');
-            $messagesUl.find('li:not(.post-message-message-list-more-container)').remove();
+            var $messagesUl = $('#post-message .message-list');
+            $messagesUl.find('li:not(.message-list-more-container)').remove();
             messages.forEach(function (message, index) {
                 var lastMessage = messages[index-1];
                 var lastGroupMeMessage = lastMessage && (new GroupMeMessage(lastMessage));
                 var groupMeMessage = new GroupMeMessage(message);
                 var defaultAvatarUrl = chrome.extension.getURL('default-contact-icon.png');
-                var $author = $('<span class="post-messsage-list-author">')
+                var $author = $('<span class="message-list-author">')
                     .append(
-                        $('<img class="post-message-list-author-avatar">')
+                        $('<img class="message-list-author-avatar">')
                         .attr('src', groupMeMessage.avatarUrl || defaultAvatarUrl)
                         .attr('title', groupMeMessage.name)
                     );
 
                 var $container = $('<li>').append($author);
-                var $message = $('<div class="post-message-list-message">')
+                var $message = $('<div class="message-list-message">')
                         .append(groupMeMessage.toHTML());
                 
                 if (lastGroupMeMessage && lastGroupMeMessage.userId == groupMeMessage.userId) {
@@ -289,7 +409,7 @@ $(window).on('load', function () {
                 }
                 $container.append($message);
             });
-            var $noMoreContainer = $messagesUl.find('li.post-message-message-list-more-container');
+            var $noMoreContainer = $messagesUl.find('li.message-list-more-container');
             $noMoreContainer.appendTo($messagesUl);
             if (messages.noMore) {
                 $noMoreContainer.addClass("hidden");
@@ -354,10 +474,10 @@ $(window).on('load', function () {
         event.preventDefault();
         postMessageRenderMessages({ getEarlier: true });
     }
-    $('#post-message .post-message-message-list-more-button').on('click', postMessageMoreHandler);
+    $('#post-message .message-list-more-button').on('click', postMessageMoreHandler);
 
     function render() {
-        $('#login, #logged-in, #select-group, #selected-group, #post-message').addClass('hidden');
+        $('#login, #logged-in, #select-group, #selected-group, #post-message, #search-message').addClass('hidden');
         groupMe.getCache(function (cache) {
             if (!cache.token) {
                 loginRender();
@@ -369,7 +489,11 @@ $(window).on('load', function () {
                 return;
             }
             selectedGroupRender();
-            postMessageRender();
+            if (cache.groupSearch) {
+                searchMessageRender();
+            } else {
+                postMessageRender();
+            }
         });
     }
     groupMe.events.on("notifier:show", function () {

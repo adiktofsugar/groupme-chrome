@@ -17,7 +17,7 @@ a:active {
     text-decoration: none;
 }
 
-#error, #info, #login, #logged-in, #select-group, #selected-group, #post-message {
+#error, #info, #login, #logged-in, #select-group, #selected-group, #post-message, #search-message {
     margin-top: 0.5em;
 }
 
@@ -72,6 +72,10 @@ a:active {
     border: 1px solid #dadada;
     box-shadow: inset 1px 1px 2px white;
 }
+#select-group .search {
+    margin-left: 10px;
+    font-size: 80%;
+}
 
 #selected-group .selected-group-share-current-page-button {
     float: right;
@@ -99,7 +103,7 @@ a:active {
 #selected-group .selected-group-remove {
 }
 
-#post-message {
+#post-message, #search-message {
     clear: both;
 }
 #post-message textarea {
@@ -114,14 +118,14 @@ a:active {
     outline: none;
     border-color: #aaa;
 }
-#post-message .post-message-message-list {
+.message-list {
     max-height: 300px;
     overflow-y: scroll;
     list-style-type: none;
     margin: 0;
     padding: 0;
 }
-#post-message .post-message-message-list li {
+.message-list li {
     word-break: break-word;
     clear: left;
     padding-top: 2px;
@@ -130,13 +134,13 @@ a:active {
     min-height: 34px;
     box-sizing: border-box;
 }
-#post-message .post-message-message-list li:nth-child(2n) {
+.message-list li:nth-child(2n) {
     background: #eee;
 }
-#post-message .post-message-message-list li.post-message-message-list-more-container {
+.message-list li.message-list-more-container {
     background: white;
 }
-#post-message .post-message-message-list li .post-messsage-list-author {
+.message-list li .message-list-author {
     position: absolute;
     top: 0;
     left: 0;
@@ -146,23 +150,23 @@ a:active {
     text-align: center;
     background: #666;
 }
-#post-message .post-message-message-list li .post-message-list-author-avatar {
+.message-list li .message-list-author-avatar {
     max-width: 100%;
     max-height: 100%;
 }
-#post-message .post-message-message-list .post-message-message-list-more-container {
+.message-list .message-list-more-container {
     list-style-type: none;
     padding: 0;
 }
-#post-message .post-message-message-list .post-message-list-message:nth-of-type(n+2) {
+.message-list .message-list-message:nth-of-type(n+2) {
     margin-top: 3px;
 }
-#post-message .post-message-message-list .post-message-message-list-more-button {
+.message-list .message-list-more-button {
     display: block;
     padding: 0.3em;
     text-align: center;
 }
-#post-message .post-message-message-list li img,
-#post-message .post-message-message-list li video {
+.message-list li img,
+.message-list li video {
     max-width: 100%;
 }

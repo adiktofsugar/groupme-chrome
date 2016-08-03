@@ -2,6 +2,7 @@ var nameToTokenMap = {
     'token': 'groupme-chrome-token',
     'groupId': 'groupme-chrome-groupId',
     'groupName': 'groupme-chrome-groupName',
+    'groupSearch': 'groupme-chrome-groupSearch',
 
     'selfNotifications': 'selfNotifications',
     'notificationTimeout': 'notificationTimeout',
@@ -440,6 +441,75 @@ function GroupMe() {
             });
         });
     }
+    function Request() {
+        this.done = false;
+        this.abort = function () {
+            this.done = true;
+        }
+    }
+    function search(matchFn, callback) {
+        var request = new Request();
+        getCache(function (cache) {
+            var groupId = cache.groupId;
+            if (!groupId) {
+                throw new Error("no group id");
+            }
+            var lastMessageId;
+            (function getMessages() {
+                request.timesExecuted = (request.timesExecuted || 0) + 1;
+                api('/groups/' + groupId + '/messages', {
+                    data: {
+                        before_id: lastMessageId,
+                        limit: 100
+                    }
+                }, function (error, response) {
+                    var newMatchedMessages = [];
+                    if (error) {
+                        return callback(error);
+                    }
+                    var messages = response.messages;
+                    var lastMessage;
+                    // it's sorted from newest to oldest
+                    if (messages.length) {
+                        lastMessage = messages[messages.length - 1];
+                        lastMessageId = lastMessage.id;
+                        request.lastMessageDate = new Date(parseInt(lastMessage.created_at, 10) * 1000);
+                    }
+                    var doesMatch, i, message;
+                    for (i = 0; i < messages.length; i++) {
+                        message = messages[i];
+                        try {
+                            doesMatch = matchFn(message);
+                        } catch (e) {
+                            doesMatch = false;
+                        }
+                        if (doesMatch) {
+                            newMatchedMessages.push(message);
+                        }
+                    }
+                    var isDone = messages.length < 100; // if it's less than the maximum, then i don't need to search again
+                    if (isDone) {
+                        request.done = true;
+                    }
+                    callback(null, newMatchedMessages);
+                    if (!request.done) {
+                        getMessages();
+                    }
+                });
+            }());
+        });
+
+        return request;
+    }
+    function searchText(text, callback) {
+        return search(function (message) { 
+            var messageText = message.text;
+            if (!messageText) {
+                return false;
+            }
+            return !!messageText.match(text);
+        }, callback);
+    }
 
     var popupTabId = null;
 
@@ -569,13 +639,14 @@ function GroupMe() {
     }
     function setCache(publicCache, callback) {
         callback = callback || function () {};
-        var cache = {};
+        var itemsToSet = {};
         Object.keys(nameToTokenMap).forEach(function (name) {
             if (publicCache[name] !== undefined) {
-                cache[ nameToTokenMap[name] ] = publicCache[name];
+                itemsToSet[ nameToTokenMap[name] ] = publicCache[name];
             }
         });
-        chrome.storage.sync.set(cache, callback);
+        
+        chrome.storage.sync.set(itemsToSet, callback);
     }
 
     this.loginProgress = loginProgress;
@@ -583,6 +654,8 @@ function GroupMe() {
     this.logout = logout;
     this.loginToken = loginToken;
     this.api = api;
+    this.search = search;
+    this.searchText = searchText;
     this.getCache = getCache;
     this.setCache = setCache;
     this.events = events;
