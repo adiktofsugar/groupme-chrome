@@ -94,6 +94,12 @@ a:active {
 #selected-group .selected-group-uri {
     text-decoration: none;
     color: #333;
+    display: inline-block;
+    vertical-align: middle;
+    width: 7em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 #selected-group .selected-group-uri:hover,
 #selected-group .selected-group-uri:active {
